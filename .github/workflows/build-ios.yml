@@ -55,18 +55,37 @@ jobs:
 
           python3 -c "
           import plistlib, os
-          for path, b_id, exe in [
-              ('ipa-build/Payload/ParentVision.app/Info.plist', 'com.parentvision.ParentVision', 'ParentVision'),
-              ('ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist', 'com.parentvision.ParentVision.BroadcastUpload', 'ParentVisionBroadcastUpload')
-          ]:
-              if os.path.exists(path):
-                  with open(path, 'rb') as f:
-                      p = plistlib.load(f)
-                  p['CFBundleIdentifier'] = b_id
-                  p['CFBundleExecutable'] = exe
-                  with open(path, 'wb') as f:
-                      plistlib.dump(p, f)
-                  print('Verified and sanitized:', path, b_id)
+
+          main_plist = 'ipa-build/Payload/ParentVision.app/Info.plist'
+          if os.path.exists(main_plist):
+              with open(main_plist, 'rb') as f:
+                  p = plistlib.load(f)
+              p['CFBundleIdentifier'] = 'com.parentvision.ParentVision'
+              p['CFBundleExecutable'] = 'ParentVision'
+              p['CFBundleDisplayName'] = 'ParentVision'
+              p['CFBundleName'] = 'ParentVision'
+              p['NSCameraUsageDescription'] = 'ParentVision uses the camera to scan the parent pairing QR code.'
+              p['NSFamilyControlsUsageDescription'] = 'ParentVision requires Screen Time and Family Controls permissions.'
+              with open(main_plist, 'wb') as f:
+                  plistlib.dump(p, f)
+              print('Sanitized main app plist with bundle ID & descriptions')
+
+          ext_plist = 'ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist'
+          if os.path.exists(ext_plist):
+              with open(ext_plist, 'rb') as f:
+                  p = plistlib.load(f)
+              p['CFBundleIdentifier'] = 'com.parentvision.ParentVision.BroadcastUpload'
+              p['CFBundleExecutable'] = 'ParentVisionBroadcastUpload'
+              p['CFBundleDisplayName'] = 'ParentVision Live Broadcaster'
+              p['CFBundleName'] = 'ParentVisionBroadcastUpload'
+              p['NSExtension'] = {
+                  'NSExtensionPointIdentifier': 'com.apple.broadcast-services-upload',
+                  'NSExtensionPrincipalClass': 'ParentVisionBroadcastUpload.SampleHandler',
+                  'RPBroadcastProcessMode': 'RPBroadcastProcessModeSampleBuffer'
+              }
+              with open(ext_plist, 'wb') as f:
+                  plistlib.dump(p, f)
+              print('Sanitized app extension plist with NSExtension dictionary')
           "
 
           cd ipa-build && zip -r ../ParentVision.ipa Payload
