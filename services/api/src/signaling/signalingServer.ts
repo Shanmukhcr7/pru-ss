@@ -1,5 +1,5 @@
 import { Server as HttpServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer, WebSocket, RawData } from 'ws';
 import url from 'url';
 import { authenticateSessionToken } from '../middleware/auth.js';
 import { SessionTokenPayload } from '../types/index.js';
@@ -16,6 +16,7 @@ interface SessionRoom {
   sessionId: string;
   deviceId: string;
   parentId: string;
+  lastOffer?: string;
   broadcaster?: SignalingClient;
   viewer?: SignalingClient;
 }
@@ -61,16 +62,20 @@ export class SignalingServer {
 
   private handleConnection(ws: WebSocket, sessionAuth: SessionTokenPayload) {
     const { sessionId, role, deviceId, parentId } = sessionAuth;
-    logger.info(`Signaling client connected: role=${role}, session=${sessionId}`);
+    logger.info(`Signaling client connected: role=${role}, session=${sessionId}, deviceId=${deviceId}`);
 
-    let room = this.rooms.get(sessionId);
+    // Key rooms by deviceId so broadcaster and viewer for this device ALWAYS connect
+    const roomKey = deviceId;
+    let room = this.rooms.get(roomKey);
     if (!room) {
       room = {
         sessionId,
         deviceId,
         parentId,
       };
-      this.rooms.set(sessionId, room);
+      this.rooms.set(roomKey, room);
+    } else {
+      room.sessionId = sessionId;
     }
 
     const client: SignalingClient = {
@@ -79,28 +84,33 @@ export class SignalingServer {
       isAlive: true,
     };
 
-    // Prevent duplicate participants in 1:1 supervision session
     if (role === 'broadcaster') {
-      if (room.broadcaster && room.broadcaster.ws.readyState === WebSocket.OPEN) {
+      if (room.broadcaster && room.broadcaster.ws.readyState === WebSocket.OPEN && room.broadcaster.ws !== ws) {
         room.broadcaster.ws.close(4001, 'Another broadcaster connected');
       }
       room.broadcaster = client;
       db.updateDeviceStatus(deviceId, 'broadcasting');
       db.updateSessionStatus(sessionId, 'active');
     } else if (role === 'viewer') {
-      if (room.viewer && room.viewer.ws.readyState === WebSocket.OPEN) {
+      if (room.viewer && room.viewer.ws.readyState === WebSocket.OPEN && room.viewer.ws !== ws) {
         room.viewer.ws.close(4002, 'Another viewer connected');
       }
       room.viewer = client;
     }
 
-    // Notify connected parties
+    // Notify connected client
     this.sendToClient(client, {
       type: 'connected',
       sessionId,
       role,
       peerOnline: role === 'broadcaster' ? !!room.viewer : !!room.broadcaster,
     });
+
+    // If viewer joins and broadcaster has already cached an offer, send it immediately
+    if (role === 'viewer' && room.lastOffer) {
+      logger.info(`Sending cached offer to newly connected viewer for device ${deviceId}`);
+      this.sendToClient(client, { type: 'offer', sdp: room.lastOffer });
+    }
 
     const peer = role === 'broadcaster' ? room.viewer : room.broadcaster;
     if (peer) {
@@ -114,22 +124,39 @@ export class SignalingServer {
       client.isAlive = true;
     });
 
-    ws.on('message', async (raw: string) => {
+    ws.on('message', async (raw: RawData, isBinary: boolean) => {
       try {
-        const message = JSON.parse(raw.toString());
-        await this.handleMessage(room!, client, message);
+        if (isBinary || Buffer.isBuffer(raw)) {
+          // Binary video frame from broadcaster -> forward directly to viewer
+          if (role === 'broadcaster' && room?.viewer && room.viewer.ws.readyState === WebSocket.OPEN) {
+            room.viewer.ws.send(raw, { binary: true });
+          }
+          return;
+        }
+
+        const rawStr = raw.toString();
+        // Check if string is JSON or raw frame string
+        if (rawStr.startsWith('{')) {
+          const message = JSON.parse(rawStr);
+          await this.handleMessage(room!, client, message);
+        } else {
+          // Raw frame data string
+          if (role === 'broadcaster' && room?.viewer && room.viewer.ws.readyState === WebSocket.OPEN) {
+            room.viewer.ws.send(rawStr);
+          }
+        }
       } catch (err: any) {
         logger.error('Error handling signaling message', { error: err.message });
       }
     });
 
     ws.on('close', async () => {
-      logger.info(`Signaling client disconnected: role=${role}, session=${sessionId}`);
-      this.handleDisconnect(sessionId, role);
+      logger.info(`Signaling client disconnected: role=${role}, session=${sessionId}, deviceId=${deviceId}`);
+      this.handleDisconnect(deviceId, role);
     });
 
     ws.on('error', (err) => {
-      logger.error('Signaling client socket error', { error: err.message, role, sessionId });
+      logger.error('Signaling client socket error', { error: err.message, role, sessionId, deviceId });
     });
   }
 
@@ -144,6 +171,7 @@ export class SignalingServer {
           logger.warn('Only broadcaster can send WebRTC offer');
           return;
         }
+        room.lastOffer = payload?.sdp;
         if (target) {
           this.sendToClient(target, { type: 'offer', sdp: payload?.sdp });
         }
@@ -186,12 +214,13 @@ export class SignalingServer {
     }
   }
 
-  private async handleDisconnect(sessionId: string, role: string) {
-    const room = this.rooms.get(sessionId);
+  private async handleDisconnect(deviceId: string, role: string) {
+    const room = this.rooms.get(deviceId);
     if (!room) return;
 
     if (role === 'broadcaster') {
       delete room.broadcaster;
+      room.lastOffer = undefined;
       await db.updateDeviceStatus(room.deviceId, 'online');
       await db.updateSessionStatus(room.sessionId, 'ended');
       if (room.viewer) {
@@ -205,8 +234,8 @@ export class SignalingServer {
     }
 
     if (!room.broadcaster && !room.viewer) {
-      this.rooms.delete(sessionId);
-      logger.info(`Session room ${sessionId} closed and removed`);
+      this.rooms.delete(deviceId);
+      logger.info(`Session room for device ${deviceId} closed and removed`);
     }
   }
 

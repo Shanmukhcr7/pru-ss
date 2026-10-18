@@ -34,8 +34,10 @@ export default function LiveScreenPage() {
   });
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [hasReceivedFrames, setHasReceivedFrames] = useState<boolean>(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewerRef = useRef<WebRTCViewer | null>(null);
 
   useEffect(() => {
@@ -67,9 +69,33 @@ export default function LiveScreenPage() {
             videoElement: videoRef.current,
             onConnectionStateChange: (state) => setConnectionState(state),
             onStats: (s) => setStats(s),
+            onBinaryFrame: (data) => {
+              setConnectionState('connected');
+              setHasReceivedFrames(true);
+              const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/jpeg' });
+              createImageBitmap(blob)
+                .then((bitmap) => {
+                  const canvas = canvasRef.current;
+                  if (canvas) {
+                    if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+                      canvas.width = bitmap.width;
+                      canvas.height = bitmap.height;
+                      setStats((prev) => ({
+                        ...prev,
+                        resolution: `${bitmap.width}x${bitmap.height}`,
+                      }));
+                    }
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(bitmap, 0, 0);
+                  }
+                  bitmap.close();
+                })
+                .catch(() => {});
+            },
             onError: (err) => setError(err.message),
             onStreamStopped: (reason) => {
               setConnectionState('stopped');
+              setHasReceivedFrames(false);
               setError(reason || 'Broadcast was stopped.');
             },
           });
@@ -180,17 +206,23 @@ export default function LiveScreenPage() {
         {/* Stream Video Container (3 cols) */}
         <div className="lg:col-span-3">
           <div className="relative aspect-[9/16] max-h-[75vh] w-auto mx-auto rounded-3xl overflow-hidden bg-black border-4 border-slate-800 shadow-2xl flex items-center justify-center">
-            {/* Live Video Element */}
+            {/* Live Canvas for Direct Frame Stream */}
+            <canvas
+              ref={canvasRef}
+              className={`w-full h-full object-contain ${hasReceivedFrames ? 'block' : 'hidden'}`}
+            />
+
+            {/* Live Video Element (WebRTC fallback) */}
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-contain"
+              className={`w-full h-full object-contain ${hasReceivedFrames ? 'hidden' : 'block'}`}
             />
 
             {/* Overlay if connecting or waiting for iPhone broadcast */}
-            {connectionState !== 'connected' && (
+            {connectionState !== 'connected' && !hasReceivedFrames && (
               <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-4">
                 {connectionState === 'connecting' || connectionState === 'initializing' ? (
                   <>

@@ -5,6 +5,7 @@ export interface WebRTCViewerOptions {
   videoElement: HTMLVideoElement;
   onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
   onStats?: (stats: { fps: number; rttMs: number; bytesReceived: number; resolution: string }) => void;
+  onBinaryFrame?: (data: Blob | ArrayBuffer) => void;
   onError?: (error: Error) => void;
   onStreamStopped?: (reason: string) => void;
 }
@@ -63,6 +64,13 @@ export class WebRTCViewer {
 
       this.ws.onmessage = async (event) => {
         try {
+          if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
+            this.options.onBinaryFrame?.(event.data);
+            return;
+          }
+          if (typeof event.data === 'string' && !event.data.startsWith('{')) {
+            return;
+          }
           const msg = JSON.parse(event.data);
           await this.handleSignalingMessage(msg);
         } catch (err: any) {

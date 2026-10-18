@@ -1,6 +1,7 @@
 import Foundation
 import CoreMedia
 import VideoToolbox
+import CoreImage
 
 public protocol WebRTCBroadcasterDelegate: AnyObject {
     func broadcasterDidConnect(_ broadcaster: WebRTCBroadcaster)
@@ -18,10 +19,13 @@ public final class WebRTCBroadcaster: NSObject, URLSessionWebSocketDelegate {
     private var webSocket: URLSessionWebSocketTask?
     private var urlSession: URLSession?
     private var isConnected = false
+    private var isSendingFrame = false
     private var lastFrameTimestamp: CMTime = .zero
+    private lazy var ciContext = CIContext(options: [.useSoftwareRenderer: false])
+    private lazy var colorSpace = CGColorSpaceCreateDeviceRGB()
 
-    // Frame rate throttle (e.g. 24 fps to conserve memory & bandwidth)
-    private let targetFrameInterval: Double = 1.0 / 24.0
+    // Frame rate throttle (e.g. 20 fps to conserve memory & bandwidth)
+    private let targetFrameInterval: Double = 1.0 / 20.0
 
     public init(signalingUrl: URL, sessionToken: String) {
         self.signalingUrl = signalingUrl
@@ -86,15 +90,17 @@ public final class WebRTCBroadcaster: NSObject, URLSessionWebSocketDelegate {
             self.delegate?.broadcasterDidConnect(self)
             self.sendInitialOffer()
 
+        case "peer_joined":
+            print("Viewer joined broadcast room, sending initial offer")
+            self.sendInitialOffer()
+
         case "answer":
             if let sdp = json["sdp"] as? String {
-                // Set remote description in WebRTC peer connection
                 print("Received WebRTC SDP answer from viewer")
             }
 
         case "candidate":
             if let candidate = json["candidate"] as? [String: Any] {
-                // Add ICE candidate
                 print("Received ICE candidate from viewer")
             }
 
@@ -108,7 +114,6 @@ public final class WebRTCBroadcaster: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func sendInitialOffer() {
-        // Construct SDP Offer for H.264 video track
         let mockSdp = "v=0\r\no=- \(Int64(Date().timeIntervalSince1970 * 1000)) 2 IN IP4 127.0.0.1\r\ns=ParentVisionLive\r\nt=0 0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\nc=IN IP4 0.0.0.0\r\na=sendonly\r\na=rtpmap:96 H264/90000\r\n"
         let msg: [String: Any] = [
             "type": "offer",
@@ -121,16 +126,16 @@ public final class WebRTCBroadcaster: NSObject, URLSessionWebSocketDelegate {
         }
     }
 
-    /// Ingests video frame from ReplayKit sample buffer.
+    /// Ingests video frame from ReplayKit sample buffer and streams compressed JPEG.
     /// Strictly handles memory deallocation to stay under 50MB extension limit.
     public func sendVideoSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         guard isConnected else { return }
+        guard !isSendingFrame else { return } // Backpressure throttle: drop frame if socket is busy
 
         let currentTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         if lastFrameTimestamp != .zero {
             let elapsed = CMTimeGetSeconds(CMTimeSubtract(currentTimestamp, lastFrameTimestamp))
             if elapsed < targetFrameInterval {
-                // Throttle frame to maintain target 24fps and respect memory ceiling
                 return
             }
         }
@@ -138,14 +143,19 @@ public final class WebRTCBroadcaster: NSObject, URLSessionWebSocketDelegate {
 
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
-        // Retain autoreleasepool to ensure temporary memory is freed immediately
         autoreleasepool {
-            let width = CVPixelBufferGetWidth(imageBuffer)
-            let height = CVPixelBufferGetHeight(imageBuffer)
+            let ciImage = CIImage(cvPixelBuffer: imageBuffer)
+            let options: [CIImageRepresentationOption: Any] = [
+                CIImageRepresentationOption(rawValue: kCGImageDestinationLossyFactor as String): 0.5
+            ]
+            guard let jpegData = ciContext.jpegRepresentation(of: ciImage, colorSpace: colorSpace, options: options) else {
+                return
+            }
 
-            // When running with WebRTC native framework:
-            // RTCVideoFrame is constructed with RTCCVPixelBuffer(pixelBuffer: imageBuffer)
-            // and passed to RTCVideoSource.capturer(self, didCapture: frame)
+            isSendingFrame = true
+            webSocket?.send(.data(jpegData)) { [weak self] _ in
+                self?.isSendingFrame = false
+            }
         }
     }
 

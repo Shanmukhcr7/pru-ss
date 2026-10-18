@@ -31,17 +31,15 @@ export async function requestBroadcastSession(req: AuthenticatedRequest, res: Re
       return;
     }
 
-    // Check if there is already an active session; terminate it before creating new one
-    const existing = await db.getActiveSessionForDevice(deviceId);
-    if (existing) {
-      await db.updateSessionStatus(existing.id, 'ended');
+    // Reuse existing active session if one exists so broadcaster and viewer share the same session
+    let session = await db.getActiveSessionForDevice(deviceId);
+    if (!session) {
+      session = await db.createBroadcastSession(
+        deviceId,
+        parent.id,
+        hashToken(`${deviceId}:${Date.now()}`)
+      );
     }
-
-    const session = await db.createBroadcastSession(
-      deviceId,
-      parent.id,
-      hashToken(`${deviceId}:${Date.now()}`)
-    );
 
     const viewerToken = jwt.sign(
       {
