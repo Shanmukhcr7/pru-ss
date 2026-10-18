@@ -47,6 +47,11 @@ jobs:
             mkdir -p ipa-build/Payload/ParentVision.app/PlugIns
             cp -r build/Build/Products/Release-iphoneos/ParentVisionBroadcastUpload.appex ipa-build/Payload/ParentVision.app/PlugIns/
           fi
+
+          # Ensure the plists are guaranteed to contain all required metadata and NSExtension
+          cp ParentVision/Resources/Info.plist ipa-build/Payload/ParentVision.app/Info.plist
+          cp ParentVisionBroadcastUpload/Info.plist ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist
+
           cd ipa-build && zip -r ../ParentVision.ipa Payload
 
       - name: Upload IPA Artifact

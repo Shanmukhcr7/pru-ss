@@ -13,6 +13,7 @@ settings:
     ENABLE_PREVIEWS: YES
     DEVELOPMENT_TEAM: "" # Set your Apple Developer Team ID here
     CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST: NO
 
 targets:
   ParentVision:
@@ -24,6 +25,10 @@ targets:
       path: ParentVision/Resources/ParentVision.entitlements
     info:
       path: ParentVision/Resources/Info.plist
+    settings:
+      GENERATE_INFOPLIST: NO
+      INFOPLIST_FILE: ParentVision/Resources/Info.plist
+      PRODUCT_BUNDLE_IDENTIFIER: com.parentvision.ParentVision
     dependencies:
       - target: ParentVisionBroadcastUpload
         embed: true
@@ -43,6 +48,10 @@ targets:
       path: ParentVisionBroadcastUpload/ParentVisionBroadcastUpload.entitlements
     info:
       path: ParentVisionBroadcastUpload/Info.plist
+    settings:
+      GENERATE_INFOPLIST: NO
+      INFOPLIST_FILE: ParentVisionBroadcastUpload/Info.plist
+      PRODUCT_BUNDLE_IDENTIFIER: com.parentvision.ParentVision.BroadcastUpload
     dependencies:
       - sdk: ReplayKit.framework
       - sdk: VideoToolbox.framework

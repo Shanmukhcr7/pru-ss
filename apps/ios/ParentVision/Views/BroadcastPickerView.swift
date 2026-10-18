@@ -8,9 +8,9 @@ import ReplayKit
 /// 2. The system displays a confirmation alert with "Start Broadcast".
 /// 3. While active, the iOS status bar and Dynamic Island display an unmistakable red recording indicator.
 public struct BroadcastPickerView: UIViewRepresentable {
-    public let preferredExtension: String
+    public let preferredExtension: String?
 
-    public init(preferredExtension: String = "com.parentvision.app.broadcast") {
+    public init(preferredExtension: String? = nil) {
         self.preferredExtension = preferredExtension
     }
 
