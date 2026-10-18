@@ -49,8 +49,15 @@ export default function LiveScreenPage() {
         const sess = await api.requestBroadcastSession(deviceId);
         setSessionInfo(sess);
 
-        const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-        const signalingUrl = (process.env.NEXT_PUBLIC_WS_URL || `ws://${host}:4000`) + '/ws/signaling';
+        let signalingUrl: string;
+        if (process.env.NEXT_PUBLIC_WS_URL) {
+          signalingUrl = process.env.NEXT_PUBLIC_WS_URL;
+        } else if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+          signalingUrl = 'wss://she-herself-virtually-earrings.trycloudflare.com/ws/signaling';
+        } else {
+          const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+          signalingUrl = `ws://${host}:4000/ws/signaling`;
+        }
 
         if (videoRef.current) {
           const viewer = new WebRTCViewer({

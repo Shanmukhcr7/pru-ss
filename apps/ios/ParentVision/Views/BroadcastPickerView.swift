@@ -10,7 +10,7 @@ import ReplayKit
 public struct BroadcastPickerView: UIViewRepresentable {
     public let preferredExtension: String?
 
-    public init(preferredExtension: String? = nil) {
+    public init(preferredExtension: String? = "com.parentvision.ParentVision.BroadcastUpload") {
         self.preferredExtension = preferredExtension
     }
 

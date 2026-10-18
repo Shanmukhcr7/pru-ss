@@ -84,7 +84,7 @@ public struct DashboardView: View {
                         HStack {
                             Spacer()
                             VStack(spacing: 8) {
-                                BroadcastPickerView()
+                                BroadcastPickerView(preferredExtension: "com.parentvision.ParentVision.BroadcastUpload")
                                     .frame(width: 64, height: 64)
                                     .background(Color(.tertiarySystemBackground))
                                     .clipShape(Circle())

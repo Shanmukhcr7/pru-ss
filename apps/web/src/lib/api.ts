@@ -1,6 +1,9 @@
 const getApiBase = () => {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== 'undefined') {
+    if (window.location.protocol === 'https:') {
+      return 'https://she-herself-virtually-earrings.trycloudflare.com';
+    }
     return `http://${window.location.hostname}:4000`;
   }
   return 'http://localhost:4000';
