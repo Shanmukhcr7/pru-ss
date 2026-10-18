@@ -1,0 +1,32 @@
+{$DOMAIN:parentvision.app} {
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # API & WebSocket Signaling
+    handle /api/* {
+        reverse_proxy api:4000
+    }
+
+    handle /health {
+        reverse_proxy api:4000
+    }
+
+    handle /ws/* {
+        reverse_proxy api:4000
+    }
+
+    # Parent Next.js Web Dashboard
+    handle {
+        reverse_proxy web:3000
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

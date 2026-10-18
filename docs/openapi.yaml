@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: ParentVision API
+  version: 1.0.0
+  description: >
+    Secure Parental Control & Live Screen Sharing API.
+    Provides device pairing, authentication, Screen Time monitoring summaries,
+    and authenticated WebRTC signaling for live screen broadcasting.
+servers:
+  - url: https://api.parentvision.app
+    description: Production Server
+  - url: http://localhost:4000
+    description: Local Development Server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service health details
+
+  /api/auth/register:
+    post:
+      summary: Register parent account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, fullName]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                fullName: { type: string, minLength: 2 }
+      responses:
+        '201':
+          description: Parent registered successfully
+        '409':
+          description: Email already registered
+
+  /api/auth/login:
+    post:
+      summary: Login parent account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful with access and refresh tokens
+        '401':
+          description: Invalid credentials
+
+  /api/auth/refresh:
+    post:
+      summary: Rotate refresh token and issue new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: New token pair issued
+        '401':
+          description: Invalid or expired refresh token
+
+  /api/devices/pairing-code:
+    post:
+      summary: Generate a 6-digit device pairing code
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceName]
+              properties:
+                deviceName: { type: string }
+      responses:
+        '201':
+          description: Pairing code generated with 15-minute expiration
+
+  /api/devices/enroll:
+    post:
+      summary: Enroll child device with pairing code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, minLength: 6, maxLength: 6 }
+                name: { type: string }
+                model: { type: string }
+                osVersion: { type: string }
+      responses:
+        '201':
+          description: Device enrolled successfully with device token
+        '400':
+          description: Invalid or expired pairing code
+
+  /api/devices:
+    get:
+      summary: List parent's enrolled devices
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of active enrolled devices
+
+  /api/devices/{id}:
+    get:
+      summary: Get device details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Device details
+        '404':
+          description: Device not found
+
+    patch:
+      summary: Rename enrolled device
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: Device renamed successfully
+
+    delete:
+      summary: Revoke device enrollment and terminate sessions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Device authorization revoked
+
+  /api/devices/heartbeat:
+    post:
+      summary: Child device heartbeat
+      security:
+        - DeviceTokenAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                batteryLevel: { type: integer, minimum: 0, maximum: 100 }
+                isCharging: { type: boolean }
+                status: { type: string, enum: [online, offline, broadcasting] }
+      responses:
+        '200':
+          description: Heartbeat acknowledged
+        '403':
+          description: Device enrollment revoked
+
+  /api/sessions/request:
+    post:
+      summary: Request live screen broadcast session
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Broadcast session authorized with viewer/broadcaster tokens and TURN credentials
+        '404':
+          description: Device not found
+
+  /api/sessions/terminate:
+    post:
+      summary: Terminate active live broadcast session
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId]
+              properties:
+                sessionId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Broadcast session terminated
+
+  /api/screentime/{deviceId}:
+    get:
+      summary: Get device Screen Time summaries
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: days
+          in: query
+          schema: { type: integer, default: 7 }
+      responses:
+        '200':
+          description: Daily usage summaries
+
+  /api/audit-logs:
+    get:
+      summary: Get security audit logs for parent account
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Audit logs
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    DeviceTokenAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

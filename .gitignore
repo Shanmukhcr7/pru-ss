@@ -1,0 +1,23 @@
+# Node & Build artifacts
+node_modules/
+dist/
+.next/
+out/
+build/
+*.log
+
+# Environment & local credentials
+.env
+.env.local
+.env.production
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+.build/

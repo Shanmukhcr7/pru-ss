@@ -1,0 +1,50 @@
+name: ParentVision
+options:
+  bundleIdPrefix: com.parentvision
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1" # iPhone
+    ENABLE_PREVIEWS: YES
+    DEVELOPMENT_TEAM: "" # Set your Apple Developer Team ID here
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  ParentVision:
+    type: application
+    platform: iOS
+    sources:
+      - path: ParentVision
+    entitlements:
+      path: ParentVision/Resources/ParentVision.entitlements
+    info:
+      path: ParentVision/Resources/Info.plist
+    dependencies:
+      - target: ParentVisionBroadcastUpload
+        embed: true
+      - framework: FamilyControls.framework
+      - framework: ManagedSettings.framework
+      - framework: DeviceActivity.framework
+      - framework: ReplayKit.framework
+      - framework: Security.framework
+
+  ParentVisionBroadcastUpload:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ParentVisionBroadcastUpload
+      - path: ParentVision/Services/AppGroupBridge.swift
+    entitlements:
+      path: ParentVisionBroadcastUpload/ParentVisionBroadcastUpload.entitlements
+    info:
+      path: ParentVisionBroadcastUpload/Info.plist
+    dependencies:
+      - framework: ReplayKit.framework
+      - framework: VideoToolbox.framework
+      - framework: CoreMedia.framework
+      - framework: Network.framework
