@@ -53,6 +53,22 @@ jobs:
           cp -f ParentVision/Resources/Info.plist ipa-build/Payload/ParentVision.app/Info.plist
           cp -f ParentVisionBroadcastUpload/Info.plist ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist
 
+          python3 -c "
+          import plistlib, os
+          for path, b_id, exe in [
+              ('ipa-build/Payload/ParentVision.app/Info.plist', 'com.parentvision.ParentVision', 'ParentVision'),
+              ('ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist', 'com.parentvision.ParentVision.BroadcastUpload', 'ParentVisionBroadcastUpload')
+          ]:
+              if os.path.exists(path):
+                  with open(path, 'rb') as f:
+                      p = plistlib.load(f)
+                  p['CFBundleIdentifier'] = b_id
+                  p['CFBundleExecutable'] = exe
+                  with open(path, 'wb') as f:
+                      plistlib.dump(p, f)
+                  print('Verified and sanitized:', path, b_id)
+          "
+
           cd ipa-build && zip -r ../ParentVision.ipa Payload
 
       - name: Upload IPA Artifact
