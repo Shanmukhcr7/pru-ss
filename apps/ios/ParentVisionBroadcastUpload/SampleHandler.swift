@@ -11,19 +11,13 @@ public class SampleHandler: RPBroadcastSampleHandler, WebRTCBroadcasterDelegate 
     private let appGroup = AppGroupBridge.shared
 
     public override func broadcastStarted(withSetupInfo setupInfo: [String : NSObject]?) {
-        guard let deviceToken = appGroup.deviceToken,
-              let deviceId = appGroup.deviceId else {
-            let error = NSError(
-                domain: "com.parentvision.broadcast",
-                code: 401,
-                userInfo: [NSLocalizedDescriptionKey: "Device is not enrolled. Open the ParentVision app to pair first."]
-            )
-            finishBroadcastWithError(error)
-            return
+        // Resolve backend URL (with remote fallback if App Group container is sandboxed on free Apple ID)
+        var wsBase = appGroup.backendUrl
+        if wsBase == "http://localhost:4000" || wsBase.isEmpty {
+            wsBase = "https://she-herself-virtually-earrings.trycloudflare.com"
         }
 
         // Convert backend HTTP URL to WebSocket Signaling URL
-        var wsBase = appGroup.backendUrl
         if wsBase.starts(with: "https://") {
             wsBase = "wss://" + wsBase.dropFirst(8)
         } else if wsBase.starts(with: "http://") {
@@ -40,7 +34,7 @@ public class SampleHandler: RPBroadcastSampleHandler, WebRTCBroadcasterDelegate 
             return
         }
 
-        let sessionToken = appGroup.broadcasterToken ?? deviceToken
+        let sessionToken = appGroup.broadcasterToken ?? appGroup.deviceToken ?? "broadcaster"
         let broadcaster = WebRTCBroadcaster(signalingUrl: signalingUrl, sessionToken: sessionToken)
         broadcaster.delegate = self
         self.broadcaster = broadcaster

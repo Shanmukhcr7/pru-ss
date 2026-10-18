@@ -26,7 +26,7 @@ public final class AppGroupBridge {
 
     // MARK: - Persistent Properties
     public var backendUrl: String {
-        get { defaults.string(forKey: Keys.backendUrl) ?? "http://localhost:4000" }
+        get { defaults.string(forKey: Keys.backendUrl) ?? "https://she-herself-virtually-earrings.trycloudflare.com" }
         set { defaults.set(newValue, forKey: Keys.backendUrl) }
     }
 
