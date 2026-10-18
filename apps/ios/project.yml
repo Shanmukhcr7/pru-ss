@@ -56,4 +56,6 @@ targets:
       - sdk: ReplayKit.framework
       - sdk: VideoToolbox.framework
       - sdk: CoreMedia.framework
+      - sdk: CoreImage.framework
+      - sdk: ImageIO.framework
       - sdk: Network.framework

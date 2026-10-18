@@ -2,6 +2,7 @@ import Foundation
 import CoreMedia
 import VideoToolbox
 import CoreImage
+import ImageIO
 
 public protocol WebRTCBroadcasterDelegate: AnyObject {
     func broadcasterDidConnect(_ broadcaster: WebRTCBroadcaster)
@@ -146,7 +147,7 @@ public final class WebRTCBroadcaster: NSObject, URLSessionWebSocketDelegate {
         autoreleasepool {
             let ciImage = CIImage(cvPixelBuffer: imageBuffer)
             let options: [CIImageRepresentationOption: Any] = [
-                CIImageRepresentationOption(rawValue: kCGImageDestinationLossyFactor as String): 0.5
+                kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.5
             ]
             guard let jpegData = ciContext.jpegRepresentation(of: ciImage, colorSpace: colorSpace, options: options) else {
                 return
