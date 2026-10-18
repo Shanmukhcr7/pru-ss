@@ -43,6 +43,10 @@ jobs:
 
           mkdir -p ipa-build/Payload
           cp -r build/Build/Products/Release-iphoneos/ParentVision.app ipa-build/Payload/
+          if [ -d "build/Build/Products/Release-iphoneos/ParentVisionBroadcastUpload.appex" ] && [ ! -d "ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex" ]; then
+            mkdir -p ipa-build/Payload/ParentVision.app/PlugIns
+            cp -r build/Build/Products/Release-iphoneos/ParentVisionBroadcastUpload.appex ipa-build/Payload/ParentVision.app/PlugIns/
+          fi
           cd ipa-build && zip -r ../ParentVision.ipa Payload
 
       - name: Upload IPA Artifact

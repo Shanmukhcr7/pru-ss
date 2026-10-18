@@ -27,11 +27,11 @@ targets:
     dependencies:
       - target: ParentVisionBroadcastUpload
         embed: true
-      - framework: FamilyControls.framework
-      - framework: ManagedSettings.framework
-      - framework: DeviceActivity.framework
-      - framework: ReplayKit.framework
-      - framework: Security.framework
+      - sdk: FamilyControls.framework
+      - sdk: ManagedSettings.framework
+      - sdk: DeviceActivity.framework
+      - sdk: ReplayKit.framework
+      - sdk: Security.framework
 
   ParentVisionBroadcastUpload:
     type: app-extension
@@ -44,7 +44,7 @@ targets:
     info:
       path: ParentVisionBroadcastUpload/Info.plist
     dependencies:
-      - framework: ReplayKit.framework
-      - framework: VideoToolbox.framework
-      - framework: CoreMedia.framework
-      - framework: Network.framework
+      - sdk: ReplayKit.framework
+      - sdk: VideoToolbox.framework
+      - sdk: CoreMedia.framework
+      - sdk: Network.framework

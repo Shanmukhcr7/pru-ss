@@ -6,10 +6,10 @@ public final class AppGroupBridge {
     public static let shared = AppGroupBridge()
     public static let appGroupIdentifier = "group.com.parentvision.app"
 
-    private let defaults: UserDefaults?
+    private let defaults: UserDefaults
 
     private init() {
-        self.defaults = UserDefaults(suiteName: AppGroupBridge.appGroupIdentifier)
+        self.defaults = UserDefaults(suiteName: AppGroupBridge.appGroupIdentifier) ?? .standard
     }
 
     // MARK: - Keys
@@ -26,48 +26,48 @@ public final class AppGroupBridge {
 
     // MARK: - Persistent Properties
     public var backendUrl: String {
-        get { defaults?.string(forKey: Keys.backendUrl) ?? "http://localhost:4000" }
-        set { defaults?.set(newValue, forKey: Keys.backendUrl) }
+        get { defaults.string(forKey: Keys.backendUrl) ?? "http://localhost:4000" }
+        set { defaults.set(newValue, forKey: Keys.backendUrl) }
     }
 
     public var deviceId: String? {
-        get { defaults?.string(forKey: Keys.deviceId) }
-        set { defaults?.set(newValue, forKey: Keys.deviceId) }
+        get { defaults.string(forKey: Keys.deviceId) }
+        set { defaults.set(newValue, forKey: Keys.deviceId) }
     }
 
     public var deviceToken: String? {
-        get { defaults?.string(forKey: Keys.deviceToken) }
-        set { defaults?.set(newValue, forKey: Keys.deviceToken) }
+        get { defaults.string(forKey: Keys.deviceToken) }
+        set { defaults.set(newValue, forKey: Keys.deviceToken) }
     }
 
     public var activeSessionId: String? {
-        get { defaults?.string(forKey: Keys.activeSessionId) }
-        set { defaults?.set(newValue, forKey: Keys.activeSessionId) }
+        get { defaults.string(forKey: Keys.activeSessionId) }
+        set { defaults.set(newValue, forKey: Keys.activeSessionId) }
     }
 
     public var broadcasterToken: String? {
-        get { defaults?.string(forKey: Keys.broadcasterToken) }
-        set { defaults?.set(newValue, forKey: Keys.broadcasterToken) }
+        get { defaults.string(forKey: Keys.broadcasterToken) }
+        set { defaults.set(newValue, forKey: Keys.broadcasterToken) }
     }
 
     public var iceServersJson: String? {
-        get { defaults?.string(forKey: Keys.iceServers) }
-        set { defaults?.set(newValue, forKey: Keys.iceServers) }
+        get { defaults.string(forKey: Keys.iceServers) }
+        set { defaults.set(newValue, forKey: Keys.iceServers) }
     }
 
     public var isBroadcasting: Bool {
-        get { defaults?.bool(forKey: Keys.isBroadcasting) ?? false }
-        set { defaults?.set(newValue, forKey: Keys.isBroadcasting) }
+        get { defaults.bool(forKey: Keys.isBroadcasting) }
+        set { defaults.set(newValue, forKey: Keys.isBroadcasting) }
     }
 
     public var lastBroadcastError: String? {
-        get { defaults?.string(forKey: Keys.lastBroadcastError) }
-        set { defaults?.set(newValue, forKey: Keys.lastBroadcastError) }
+        get { defaults.string(forKey: Keys.lastBroadcastError) }
+        set { defaults.set(newValue, forKey: Keys.lastBroadcastError) }
     }
 
     public func clearBroadcastSession() {
-        defaults?.removeObject(forKey: Keys.activeSessionId)
-        defaults?.removeObject(forKey: Keys.broadcasterToken)
-        defaults?.set(false, forKey: Keys.isBroadcasting)
+        defaults.removeObject(forKey: Keys.activeSessionId)
+        defaults.removeObject(forKey: Keys.broadcasterToken)
+        defaults.set(false, forKey: Keys.isBroadcasting)
     }
 }
