@@ -48,9 +48,10 @@ jobs:
             cp -r build/Build/Products/Release-iphoneos/ParentVisionBroadcastUpload.appex ipa-build/Payload/ParentVision.app/PlugIns/
           fi
 
-          # Ensure the plists are guaranteed to contain all required metadata and NSExtension
-          cp ParentVision/Resources/Info.plist ipa-build/Payload/ParentVision.app/Info.plist
-          cp ParentVisionBroadcastUpload/Info.plist ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist
+          # Ensure everything is writable and force replace Info.plist files with exact metadata
+          chmod -R u+w ipa-build
+          cp -f ParentVision/Resources/Info.plist ipa-build/Payload/ParentVision.app/Info.plist
+          cp -f ParentVisionBroadcastUpload/Info.plist ipa-build/Payload/ParentVision.app/PlugIns/ParentVisionBroadcastUpload.appex/Info.plist
 
           cd ipa-build && zip -r ../ParentVision.ipa Payload
 
